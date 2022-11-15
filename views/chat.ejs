@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>채팅 프로그램</title>
+
+    <!-- socket.io cdn -->
+    <script
+      src="https://cdn.socket.io/4.5.3/socket.io.min.js"
+      integrity="sha384-WPFUvHkB1aHA5TDSZi6xtDgkF0wXJcIIxXhC6h8OT8EH3fC5PWro5pWJ1THjcfEi"
+      crossorigin="anonymous"
+    ></script>
+    <link rel="stylesheet" href="../static/css/chat.css" />
+  </head>
+  <body>
+    <h1>Socket.io</h1>
+
+    <!-- [실습44-2] 채팅창 입장 문구 안내 socket.id -> nickname -->
+    <div class="entry-box">
+      <input
+        type="text"
+        id="nickname"
+        placeholder="닉네임"
+        autofocus
+        onkeydown="if(event.keyCode==13) javascript: entry();"
+      />
+      <button type="button" id="entryBtn" onclick="entry()">입장</button>
+    </div>
+    <div class="chatbox d-none">
+      <div id="chatlist" class="chatlist">
+        <!-- [실습43] 임시 데이터 -->
+        <!-- <div class="mychat">
+          <div>안녕</div>
+        </div>
+        <div class="otherchat">
+          <div>응 안녕</div>
+        </div>
+        <div class="notice">XX가 입장했습니다.</div> -->
+      </div>
+
+      <input
+        type="text"
+        id="message"
+        onkeydown="if(event.keyCode==13) javascript: send();"
+      />
+      <button type="button" id="sendBtn" onclick="send()">전송</button>
+    </div>
+
+    <!-- <button onclick="sayHello()">hello</button>
+    <button onclick="sayStudy()">study</button>
+    <button onclick="sayBye()">bye</button>
+    <p id="from-server"></p> -->
+
+    <script>
+      let socket = io.connect(); // socket 사용을 위한 객체 생성
+      let myNick; // 내 닉네임 설정
+
+      socket.on("connect", () => {
+        console.log("💥Server Socket Connected💥 >>", socket.id);
+      });
+
+      //   [실습44] 채팅창 입장 안내 문구
+      // notice 이벤트를 받아서 공지 문구를 출력
+      socket.on("notice", (msg) => {
+        console.log("socket on notice >> ", msg);
+        document
+          .querySelector("#chatlist")
+          .insertAdjacentHTML("beforeend", `<div class="notice">${msg}</div>`);
+      });
+
+      // [실습44-2] 채팅창 입장 안내문구 socket.id -> nickname
+      function entry() {
+        console.log(document.querySelector("#nickname").value);
+        if (document.querySelector("#nickname").value == "") {
+          alert("닉네임을 입력해 주세요");
+          return;
+        }
+
+        socket.emit("setNick", document.querySelector("#nickname").value);
+        // 실습44 살려서 추가되게끔
+      }
+
+      socket.on("entrySuccess", (nick) => {
+        myNick = nick;
+
+        // 입력창 비활성화
+        document.querySelector("#nickname").disabled = true;
+        // [입장]버튼 비활성화
+        document.querySelector(".entry-box > button").disabled = true;
+        // 채팅박스를 보여줌
+        document.querySelector(".chatbox").classList.remove("d-none");
+      });
+
+      socket.on("error", (data) => {
+        console.log("error", data);
+        alert(data);
+      });
+
+      // [실습45] 채팅창 메세지 전송 Step1
+      // 'send' 이벤트 전송하기
+      function send() {
+        data = {
+          myNick: myNick,
+          msg: document.querySelector("#message").value,
+        };
+
+        if (document.querySelector("#message").value == "") {
+          alert("채팅을 입력해 주세요");
+          return;
+        }
+        socket.emit("send", data);
+      }
+
+      // [실습45] 채팅창 메세지 전송 Step2
+      // 'newMessage' 이벤트를 전달받기 { 닉네임, 메세지내용 }
+      // data
+      socket.on("newMessage", (data) => {
+        console.log("socket on newMessage >> ", data);
+        // 생성해야할 채팅 html구조
+        //    <div class="mychat">
+        //       <div>안녕</div>
+        //     </div>
+        //     <div class="otherchat">
+        //       <div>응 안녕</div>
+        //     </div>
+        let chatList = document.querySelector("#chatlist"); // #chatlist 선택
+        let div = document.createElement("div"); // .mychat or .otherchat 생성
+        // <div></div>
+        let divChat = document.createElement("div"); // 가장 안쪽 div (메세지 박스) 생성
+        // <div></div>
+        let divNick = document.createElement("p");
+
+        // 새 메세지(data => { nick: 'a', msg: 'hello' })가 도착 했는데
+        // myNick에 저장된 현재 내 닉네임과
+        // 새 메세지(data)의 nick이 같다면, 내가 보낸 채팅
+        // 새 메세지(data)의 nick이 다르면, 상대방이 보낸 채팅
+
+        if (myNick == data.nick) {
+          div.classList.add("mychat"); // <div class="mychat"></div>
+        } else {
+          div.classList.add("otherchat"); // <div class="otherchat"></div>
+        }
+
+        divNick.textContent = data.nick; // <p>nick</p>
+        divChat.textContent = data.msg; // <div>msg</div>
+
+        div.appendChild(divNick);
+
+        div.appendChild(divChat);
+
+        chatList.appendChild(div);
+
+        // 스크롤하단고정
+        chatList.scrollTop = chatList.scrollHeight;
+
+        clearInput();
+      });
+
+      function clearInput() {
+        const txtmsg = document.getElementById("message");
+        txtmsg.value = "";
+      }
+
+      //   실습42
+      //   function setMsg(obj) {
+      //     console.log("setMsg obj >> ", obj);
+      //     document.querySelector(
+      //       "#from-server"
+      //     ).textContent = `${obj.who} : ${obj.msg}`;
+      //   }
+
+      //   function sayHello() {
+      //     socket.emit("hello", { who: "client", msg: "hello" }); // emit으로 서버에 data를 보내줌
+      //     socket.on("helloKr", (data) => {
+      //       // on으로 서버에서 전달받은 data를 textContent로 출력함
+      //       //   console.log("socket on helloKr >> ", data);
+      //       //   document.querySelector(
+      //       //   "#from-server"
+      //       // ).textContent = `${data.who} : ${data.msg}`; // 긴 코드가 반복적으로 들어가서 함수로 따로 빼주는 리팩토링 진행
+      //       setMsg(data);
+      //     });
+      //   }
+
+      //   function sayStudy() {
+      //     socket.emit("study", { who: "client", msg: "study" }); // emit으로 서버에 data를 보내줌
+      //     socket.on("studyKr", (data) => {
+      //       // on으로 서버에서 전달받은 data를 textContent로 출력함
+      //       //   console.log("socket on studyKr >> ", data);
+      //       setMsg(data);
+      //     });
+      //   }
+
+      //   function sayBye() {
+      //     socket.emit("bye", { who: "client", msg: "bye" }); // emit으로 서버에 data를 보내줌
+      //     socket.on("byeKr", (data) => {
+      //       // on으로 서버에서 전달받은 data를 textContent로 출력함
+      //       //   console.log("socket on byeKr >> ", data);
+      //       setMsg(data);
+      //     });
+      //   }
+    </script>
+  </body>
+</html>

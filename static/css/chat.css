@@ -1,0 +1,46 @@
+.chatlist {
+  background-color: skyblue;
+  width: 50%;
+  height: 500px;
+  padding: 10px;
+  overflow: auto;
+}
+
+.chatlist div {
+  margin-top: 3px;
+}
+
+.chatlist p {
+  margin-top: 5px;
+  margin-bottom: 3px;
+  font-size: 11px;
+}
+
+.chatlist div div {
+  display: inline-block;
+  padding: 3px;
+}
+
+.mychat {
+  text-align: right;
+}
+
+.mychat div {
+  background-color: yellow;
+  border-radius: 3px 0px 3px 3px;
+}
+
+.otherchat div {
+  background-color: white;
+  border-radius: 3px 0px 3px 3px;
+}
+
+.notice {
+  text-align: center;
+  color: navy;
+  font-size: 12px;
+}
+
+.d-none {
+  display: none;
+}
