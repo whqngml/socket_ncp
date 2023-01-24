@@ -44,3 +44,7 @@
 .d-none {
   display: none;
 }
+
+.secret-chat div {
+  background-color: pink;
+}

@@ -39,7 +39,12 @@
         </div>
         <div class="notice">XX가 입장했습니다.</div> -->
       </div>
-
+      <select id="nicklist">
+        <!-- <option value="all">전체</option>
+        <option value="socket.id1">nick1</option>
+        <option value="socket.id2">nick2</option> -->
+      </select>
+      에게
       <input
         type="text"
         id="message"
@@ -102,7 +107,8 @@
       // 'send' 이벤트 전송하기
       function send() {
         data = {
-          myNick: myNick,
+          myNick: myNick, // 'entrySuccess' 이벤트에서 입장 성공시 설정하는 내 닉네임
+          dm: document.querySelector("#nicklist").value, // 현재 선택된 select 태그의 option값
           msg: document.querySelector("#message").value,
         };
 
@@ -143,8 +149,17 @@
           div.classList.add("otherchat"); // <div class="otherchat"></div>
         }
 
+        // [실습46] DM 기능 추가
+        console.log("send data check >> ", data);
+        // 전체로 보냈을 때: {nick: 'ㅁ', msg: 'ㅁ'}
+        // dm으로 보냈을 때: {nick: 'ㅁ', msg: 'ㅁ', dm: '(속닥속닥)'}
+        if (data.dm) {
+          div.classList.add("secret-chat");
+          divChat.textContent = data.dm; // (속닥속닥) 글자 추가
+        }
         divNick.textContent = data.nick; // <p>nick</p>
-        divChat.textContent = data.msg; // <div>msg</div>
+        // divChat.textContent = data.msg; // <div>msg</div>
+        divChat.textContent += data.msg; // <div>(속닥속닥) nick : msg</div>
 
         div.appendChild(divNick);
 
@@ -156,6 +171,37 @@
         chatList.scrollTop = chatList.scrollHeight;
 
         clearInput();
+      });
+
+      // [실습46] DM기능 추가
+      socket.on("updateNicks", (nickArray) => {
+        console.log("socket on updateNicks >> ", nickArray);
+
+        // 미션
+        // 유저목록 하나하나를 option태그로 만들어서 select에 추가
+        // select 태그 내부에 추가되어야 할 코드 형식
+        // <option value="all">전체</option>
+        // <option value="socket.id1">nick1</option>
+        // <option value="socket.id2">nick2</option>
+        let options = `<option value='all'>전체</option>`; // 모든 option 태그들
+
+        // 1. 반복문 사용해서 option태그 하나하나 완성
+        for (const socketid in nickArray) {
+          console.log(`${socketid}: ${nickArray[socketid]}`); // socket.id: nickname
+          console.log(
+            `<option value='${socketid}'>${nickArray[socketid]}</option>`
+          );
+          options =
+            options +
+            `<option value='${socketid}'>${nickArray[socketid]}</option>`; // x = x + 1
+          // options += `<option value='${socketid}'>${nickArray[socketid]}</option>`; // x += 1
+        }
+
+        console.log(options);
+        // 2. select 태그에 option 태그들을 추가
+        // select태그.innerHTML = options;
+        let select = document.getElementById("nicklist");
+        select.innerHTML = options;
       });
 
       function clearInput() {

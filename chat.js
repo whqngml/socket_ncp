@@ -4,7 +4,7 @@ const app = express();
 // socket은 express가 아님 http 모듈에 연결해야 사용가능
 const http = require("http").Server(app);
 const io = require("socket.io")(http); // http-socket 연결
-const PORT = 8009;
+const PORT = 8000;
 
 app.set("view engine", "ejs");
 app.use("/views", express.static(__dirname + "/views"));
@@ -18,6 +18,12 @@ app.get("/", (req, res) => {
 });
 
 const nickArray = {}; // 유저목록
+
+// [실습46] DM기능 구현
+// 유저목록 업데이트(유저입장, 퇴장시)
+function updateList() {
+  io.emit("updateNicks", nickArray); // { socket.id: nick1, socket.id: nick2, ... }
+}
 
 // io.on
 // : socket과 관련된 통신작업을 처리
@@ -47,30 +53,52 @@ io.on("connection", (socket) => {
       console.log("접속 유저목록 >>", nickArray);
       io.emit("notice", `${nick}님이 입장하셨습니다.`);
       socket.emit("entrySuccess", nick);
+      updateList(); // 유저목록 업데이트
     }
+  });
 
-    // [실습44-3] 접속자 퇴장시
-    // 'notice' 이벤트로 퇴장 공지
-    socket.on("disconnect", () => {
-      // 1. socket.id 콘솔로그찍기
-      console.log("💥Server Socket Disconnect💥", socket.id);
-      // 2. 전체공지 ('notice', 퇴장메세지(유저닉네임 포함))
-      //  ex. aa님이 퇴장하셨습니다.
-      io.emit("notice", `${nickArray[socket.id]}님이 퇴장하셨습니다.`);
-      // 3. nickArray에서 해당유저 삭제(객체에서 key-value 삭제)
-      console.log(nickArray[socket.id]);
-      io.emit("notice", `${nickArray[socket.id]}님이 퇴장하셨습니다`);
-      delete nickArray[socket.id];
-    });
+  // [실습44-3] 접속자 퇴장시
+  // 'notice' 이벤트로 퇴장 공지
+  socket.on("disconnect", () => {
+    // 1. socket.id 콘솔로그찍기
+    console.log("💥Server Socket Disconnect💥", socket.id);
+    // 2. 전체공지 ('notice', 퇴장메세지(유저닉네임 포함))
+    //  ex. aa님이 퇴장하셨습니다.
+    io.emit("notice", `${nickArray[socket.id]}님이 퇴장하셨습니다.`);
+    // 3. nickArray에서 해당유저 삭제(객체에서 key-value 삭제)
+    console.log(nickArray[socket.id]);
+    delete nickArray[socket.id];
+    updateList(); // 유저목록 업데이트
   });
 
   // [실습45] 채팅창 메세지 전송 Step1
   socket.on("send", (data) => {
-    console.log("socket on send >> ", data); // { myNick: 'a', msg: 'cc' }
+    console.log("socket on send >> ", data); // { myNick: 'a', dm: '전체 | 특정닉네임', msg: 'cc' }
+    // 전체: socket on send >>  { myNick: 'd', dm: 'all', msg: 'sd' }
+    // 특정아이디: socket on send >>  { myNick: 'd', dm: 'QT7WFj-UkTnlezyjAAAF', msg: 'sd' }
 
-    // [실습45] 채팅창 메세지 전송 Step2
-    const sendData = { nick: data.myNick, msg: data.msg };
-    io.emit("newMessage", sendData);
+    console.log(nickArray);
+    console.log(nickArray[socket.id]);
+    console.log(nickArray[data.dm]);
+    console.log(data);
+    console.log(data.dm);
+    console.log(data.myNick);
+
+    if (data.dm !== "all") {
+      let dmSocketId = data.dm; // 특정 유저의 socket id
+      const sendData = { nick: data.myNick, msg: data.msg, dm: "(속닥속닥)" };
+      // dm전송 부분
+      if (nickArray[data.dm] == data.myNick) {
+        return socket.emit("newMessage", sendData); // 자기자신에게만 DM 메세지 전송
+      }
+      io.to(dmSocketId).emit("newMessage", sendData); // 특정 소켓아이디에게만 DM메세지 전송
+      socket.emit("newMessage", sendData); // 자기자신에게도 DM 메세지 전송
+    } else {
+      // 전체 전송 부분
+      // [실습45] 채팅창 메세지 전송 Step2
+      const sendData = { nick: data.myNick, msg: data.msg };
+      io.emit("newMessage", sendData);
+    }
   });
 });
 
